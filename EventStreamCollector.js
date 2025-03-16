@@ -51,37 +51,61 @@ class EventStreamCollector extends EventEmitter {
    * Sets up all event listeners for tracking
    */
   async setupEventListeners() {
-    // Track page close
-    this.page.once('close', this.handlePageClose.bind(this));
+    console.log('Setting up event listeners...');
     
-    // Track video frames if enabled
-    if (this.options.captureVideo) {
-      this.setupVideoCapture();
-    }
-    
-    // Track mouse clicks
-    this.clickHandler = this.handleClick.bind(this);
-    this.page.on('click', this.clickHandler);
-    
-    // Track form inputs
-    this.inputHandler = this.handleInput.bind(this);
-    this.page.on('input', this.inputHandler);
-
-    
-    // Track network requests if enabled
-    if (this.options.includeNetworkRequests) {
-      this.requestHandler = this.handleRequest.bind(this);
-      this.page.on('request', this.requestHandler);
+    // Instead of exposing a function
+    await this.page.evaluate(() => {
+      // Create a custom event channel
+      window.__trackingEvents = [];
       
-      this.responseHandler = this.handleResponse.bind(this);
-      this.page.on('response', this.responseHandler);
-    }
-
+      // Log when events are captured
+      console.log('DOM event listeners initialized');
+      
+      // Set up click listener
+      document.addEventListener('click', (event) => {
+        const data = {
+          type: 'click',
+          timestamp: Date.now(),
+          x: event.clientX,
+          y: event.clientY,
+          target: event.target.tagName
+        };
+        window.__trackingEvents.push(data);
+        console.log('Click captured:', data);
+      }, true);
+    });
+    
+    // Periodically poll for events
+    this.pollingInterval = setInterval(async () => {
+      const events = await this.page.evaluate(() => {
+        const captured = window.__trackingEvents || [];
+        window.__trackingEvents = [];
+        return captured;
+      });
+      
+      if (events.length > 0) {
+        console.log(`Retrieved ${events.length} events`);
+        events.forEach(event => {
+          // Process each event
+          if (event.type === 'click') {
+            this.emit('action', {
+              type: 'click',
+              x: event.x,
+              y: event.y,
+              target: event.target
+            });
+          }
+        });
+      }
+    }, 500); // Poll every 500ms
+  
+  
     // Set up direct DOM event listeners
   await this.page.evaluate(() => {
     document.addEventListener('click', (event) => {
+      console.log('Click detected on:', event.target.tagName, 'at', event.clientX, event.clientY);
       // Send the event data back to Node.js
-      window.__puppeteerClick({
+      window.__trackingClick({
         x: event.clientX, 
         y: event.clientY,
         target: event.target.tagName
@@ -90,11 +114,12 @@ class EventStreamCollector extends EventEmitter {
   });
 
   // Create a handler in Node.js context to receive the events
-  await this.page.exposeFunction('__puppeteerClick', (data) => {
+  await this.page.exposeFunction('__trackingClick', (data) => {
     console.log('Click captured via DOM:', data);
     this.handleDOMClick(data);
   });
 }
+// Don't forget to clear the interval when stopping
 
 // Add a new handler for DOM clicks
 async handleDOMClick(data) {

@@ -2,6 +2,9 @@ const puppeteer = require('puppeteer');
 const path = require('path');
 const ActionTrackingRecorder = require('./ActionTrackingRecorder');
 
+const outputPath = path.join(__dirname, 'chatgpt-actions.json');
+
+
 async function trackChatGPT() {
   // Launch browser with GUI visible so you can interact with it
   const browser = await puppeteer.launch({
@@ -36,6 +39,38 @@ async function trackChatGPT() {
     type: 'test',
     timestamp: Date.now(),
     details: 'This is a test action'
+  });
+
+  (async () => {
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
+    
+    // Expose the function to the browser context
+    await page.exposeFunction('__puppeteerClick', (clickData) => {
+      console.log('Click received:', clickData);
+      // Process your click data here
+      // You can emit events to your collector or write to a log
+    });
+    
+    // Now navigate to the page
+    await page.goto('https://chatgpt.com/login');
+    
+      // Initialize your tracking extension
+  const recorder = new ActionTrackingRecorder(page, {
+    // Add any options you need
+  });
+
+  await recorder.start(outputPath);
+  console.log('Tracking initialized successfully');
+
+  // Test that the recorder works by sending a manual event
+  recorder.writer.recordAction({
+    type: 'test',
+    timestamp: Date.now(),
+    details: 'This is a test action'
+  });
+    // Initialize your tracking extension after navigation
+    // ...
   });
   
   try {

@@ -32,6 +32,7 @@ class ActionTrackingRecorder {
    */
   setupEventRouting() {
     // Route action events from collector to writer
+    console.log("Writing");
     this.collector.on('action', (action) => {
       this.writer.recordAction(action);
     });
@@ -97,17 +98,21 @@ class ActionTrackingRecorder {
    */
   async stop() {
     if (!this.isRecording) {
+      console.log("Not Recording, nothing to stop");
       return this.recordingResult;
     }
-    
+    console.log("Stopping recording...");
     this.isRecording = false;
     
     // Stop collector first
+    console.log("Stopping collector...");
     await this.collector.stop();
     
     // Then stop writer
+    console.log("Stopping writer...");
     const result = await this.writer.stop();
     
+    console.log("Writer stopped, result:", result);
     this.recordingResult = result;
     return result;
   }

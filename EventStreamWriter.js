@@ -18,7 +18,7 @@ class EventStreamWriter extends EventEmitter {
     this.videoWriter = null;
     this.outputPath = null;
     this.actionLogPath = null;
-    this.isWriting = false;
+    this.isWriting = true;
   }
 
   /**
@@ -78,7 +78,7 @@ class EventStreamWriter extends EventEmitter {
    */
   async recordAction(action) {
     if (!this.isWriting) return;
-    
+  
     // Add to in-memory log
     this.actionLog.push(action);
     
@@ -91,6 +91,7 @@ class EventStreamWriter extends EventEmitter {
       action,
       totalActions: this.actionLog.length
     });
+    
   }
 
   /**
